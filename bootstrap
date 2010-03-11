@@ -1,0 +1,17 @@
+#! /bin/sh
+
+if test -d fw/bin
+  then
+    PATH="`pwd`/fw/bin:$PATH"
+    export PATH
+  fi
+
+fwb=`which fw-bootstrap`
+
+if test -z "$fwb"
+  then
+    echo "bootstrap: fatal: fw-bootstrap not installed or not in PATH" 1>&2
+    exit 1
+  fi
+
+"$fwb" --fw_version "0.2.4" --name mondemand-web --revision svn --template script --svn_project_path https://mondemand.svn.sourceforge.net/svnroot/mondemand/mondemand-web/trunk --svn_tag_root https://mondemand.svn.sourceforge.net/svnroot/mondemand/mondemand-web/tags "$@"
