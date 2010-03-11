@@ -1,2 +1,6 @@
+Version 0.0.1 (molinaro)
+	* fix permission on drraw.cgi
+	* add index.html page
+
 Version 0.0.0 (molinaro)
 	* initial ui consisting of drraw with config
