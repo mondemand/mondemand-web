@@ -1,10 +1,11 @@
-httpdsrcdir=/var/www/html/mondemand
-httpdsrc_DATA=           \
-    drraw.conf                \
-    drraw-2.2b2/drraw.cgi
+httpdsrcdir = /var/www/html/mondemand
+dist_httpdsrc_DATA =           \
+  drraw.conf            \
+  index.html
+httpdsrc_SCRIPTS =       \
+  drraw-2.2b2/drraw.cgi
 
-EXTRA_DIST=    \
-  drraw.conf   \
+EXTRA_DIST =    \
   drraw-2.2b2
 
-MAINTAINERCLEANFILES=Makefile.in
+MAINTAINERCLEANFILES = Makefile.in
