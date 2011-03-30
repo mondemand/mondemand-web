@@ -1,3 +1,6 @@
+Version 0.1.1 (molinaro)
+	* dependency issues, needed a rebuild
+
 Version 0.1.0 (molinaro)
 	* uses rrd's caching mechanism
 
