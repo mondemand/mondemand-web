@@ -13,6 +13,10 @@ set -e
 case "$1" in
   configure)
     # most recently configured version is $2 (possibly empty string)
+    mkdir -p /var/www/html/mondemand/drraw/tmp
+    mkdir -p /var/www/html/mondemand/drraw/saved
+    mkdir -p /var/www/html/mondemand/data
+    chown -R apache:apache /var/www/html/mondemand
     ;;
   *)
     ;;

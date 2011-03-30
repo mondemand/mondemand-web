@@ -12,10 +12,6 @@ set -e
 
 case "$1" in
   install)
-    mkdir -p /var/www/html/mondemand/data
-    mkdir -p /var/www/html/mondemand/drraw/tmp
-    mkdir -p /var/www/html/mondemand/drraw/saved
-    chown -R apache:apache /var/www/html/mondemand
     ;;
   upgrade)
     # old version is $2
