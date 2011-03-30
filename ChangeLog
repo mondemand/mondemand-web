@@ -1,3 +1,15 @@
+Version 0.1.2 (molinaro)
+	* really create necessary directories this time
+
+Version 0.1.1 (molinaro)
+	* dependency issues, needed a rebuild
+
+Version 0.1.0 (molinaro)
+	* uses rrd's caching mechanism
+
+Version 0.0.2 (molinaro)
+	* create some directories which are required to run drraw.cgi
+
 Version 0.0.1 (molinaro)
 	* fix permission on drraw.cgi
 	* add index.html page

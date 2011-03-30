@@ -2,7 +2,7 @@
 # variable FW_PACKAGE_DEFAULT_MAINTAINER if non-empty at init time
 
 FW_PACKAGE_NAME="mondemand-web"
-FW_PACKAGE_VERSION="0.0.1"
+FW_PACKAGE_VERSION="0.1.2"
 FW_PACKAGE_MAINTAINER="Mondemand Devel <mondemand-devel@lists.sourceforge.net>"
 FW_PACKAGE_SHORT_DESCRIPTION="Web UI for Mondemand Listener Machine"
 FW_PACKAGE_DESCRIPTION=`cat README`
@@ -14,7 +14,7 @@ FW_PACKAGE_ARCHITECTURE_DEPENDENT="0"
 # 
 # For other packaging systems, the syntax is translated for you.
 
-FW_PACKAGE_DEPENDS="rrdtool-perl"
+FW_PACKAGE_DEPENDS="rrdtool-perl (>= 1.4.5)"
 FW_PACKAGE_CONFLICTS=""
 FW_PACKAGE_PROVIDES=""
 FW_PACKAGE_REPLACES=""

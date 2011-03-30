@@ -1,4 +1,4 @@
-#! /usr/bin/perl -T
+#! /usr/local/bin/perl -T
 #
 # Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Christophe Kalt
 #
@@ -113,7 +113,7 @@ $drefresh = 1800;
 $gformat = "%8.2lf";
 
 # Maximum time (seconds) CGI processes may be running (0 to disable)
-$maxtime = 60;
+$maxtime = 300;
 
 # Cache refresh time (seconds)
 $crefresh = 3600;
@@ -3511,7 +3511,8 @@ sub DRAW
                                      join(':', 'PRINT', 'xz',
                                           param("${ds}_RRA"), '%lf') );
 
-                        my ($graphret, $xs, $ys) = RRDs::graph(( $Config{'osname'} eq 'MSWin32' ) ? 'NUL:' : '/dev/null', "--start", $startts, "--end", $endts, @dsxz);
+                        my ($graphret, $xs, $ys) = RRDs::graph(( $Config{'osname'} eq 'MSWin32' ) ? 'NUL:' : '/dev/null', "--start", $startts, "--end", $endts, @dsxz,"--daemon", "/var/run/rrdcached.sock");
+#                        my ($graphret, $xs, $ys) = RRDs::graph(( $Config{'osname'} eq 'MSWin32' ) ? 'NUL:' : '/dev/null', "--start", $startts, "--end", $endts, @dsxz);
                         next if ( ${$graphret}[0] eq "nan" );
 
                         # Looks good, use it
@@ -3814,7 +3815,8 @@ sub DRAW
         $out = '/dev/null';
     }
 
-    RRDs::graph($out, @Options, @DEF, @CDEF, @ELEM)
+    #RRDs::graph($out, @Options, @DEF, @CDEF, @ELEM)
+    RRDs::graph($out, @Options, @DEF, @CDEF, @ELEM,"--daemon", "/var/run/rrdcached.sock")
         unless ( $mode > 0 && $out ne '-' && -r $out );
 
     if ( defined(RRDs::error) ) {
