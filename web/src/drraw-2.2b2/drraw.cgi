@@ -992,7 +992,7 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
                                 ( defined(param('End'))
                                   && param('End') ne '' )
                                 ? param('End') : 'now' );
-        
+
                     if ( defined(RRDs::error) ) {
                         &Error(RRDs::error);
                     }
@@ -1660,7 +1660,7 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
             if ( defined(param('dGrouped')) );
 
         &BoardOptions;
-        
+
         print
             p({-align=>'center'},
               ( $level == 2
@@ -1686,12 +1686,12 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
               : ''),
               p({-align=>'center'}, submit(-name=>'USERSAID',
                                            -value=>'Update'));
-        
+
         &BoardConfig;
 
         print
             end_form;
-        
+
         print hr, &Dump if ( $DEBUG );
     }
 
@@ -2321,8 +2321,8 @@ sub TemplateIndex
                           cmp $TemplatesById{$b}{'Name'} }
                    keys(%TemplatesById) ) {
         next unless ( $TemplatesById{$tid}{'Name'} =~ /$_[0]/ );
-        &TMPLFind($TemplatesById{$tid}{'Filter'},
-                  $TemplatesById{$tid}{'Display'});
+#        &TMPLFind($TemplatesById{$tid}{'Filter'},
+#                  $TemplatesById{$tid}{'Display'});
         print
             Tr({-class=>($silver++ % 2 == 0) ? 'header' : ''},
                td(a({-href=>MakeURL('Mode', 'view', 'Template', $tid)},
@@ -2340,17 +2340,17 @@ sub TemplateIndex
                   a({-href=>MakeURL('USERSAID', 'Edit', 'Template', $tid)},
                     'Clone') .'] [Delete] '
                   : '', ' ',
-                  b($TemplatesById{$tid}{'Name'})),
-               td({-align=>'right'}, ' (' . scalar(keys(%TMPL)) . ')'),
-               td(start_form(-method=>'GET'),
-                  submit(-name=>'Mode', -value=>'view'),
-                  '<input type=hidden name=Template value='. $tid ." />\n",
-                  ($IndexMax <= 0 || scalar(keys(%TMPL)) <= $IndexMax) ?
-                  popup_menu(-name=>'Base',
-                             -values=>[sort { $TMPL{$a} cmp $TMPL{$b} }
-                                       keys(%TMPL)],
-                             -labels=>\%TMPL) : '',
-                  end_form));
+                  b($TemplatesById{$tid}{'Name'})));
+#               td({-align=>'right'}, ' (' . scalar(keys(%TMPL)) . ')'));
+#               td(start_form(-method=>'GET'),
+#                 submit(-name=>'Mode', -value=>'view'),
+#                 '<input type=hidden name=Template value='. $tid ." />\n",
+#                 ($IndexMax <= 0 || scalar(keys(%TMPL)) <= $IndexMax) ?
+#                 popup_menu(-name=>'Base',
+#                            -values=>[sort { $TMPL{$a} cmp $TMPL{$b} }
+#                                      keys(%TMPL)],
+#                            -labels=>\%TMPL) : '',
+#                 end_form));
     }
 }
 
@@ -2362,28 +2362,28 @@ sub DashBoardIndex
     foreach $did ( sort { $BoardsById{$a}{'Name'} cmp $BoardsById{$b}{'Name'} }
                    keys(%BoardsById) ) {
         next unless ( $BoardsById{$did}{'Name'} =~ /$_[0]/ );
-        &BoardFind($did);
-        my @extra;
-        if ( defined($BoardsById{$did}{'Filters'}) ) {
-            $extra[0] = ' (' . scalar(keys(%DBTMPL)) . ')';
-            $extra[1] =
-                start_form(-method=>'GET') .
-                submit(-name=>'Mode', -value=>'view') .
-                '<input type=hidden name=Dashboard value='. $did ." />\n";
-            $extra[1] .= popup_menu(-name=>'Base',
-                                    -values=>[sort keys(%DBTMPL)])
-                if ($IndexMax <= 0 || scalar(keys(%DBTMPL)) <= $IndexMax);
-            $extra[1] .= end_form;
-        } else {
-            $extra[0] = '';
-            $extra[1] =
-                start_form(-method=>'GET') .
-                submit(-name=>'Mode', -value=>'view') .
-                ' with filter: ' .
-                '<input type=hidden name=Dashboard value='. $did ." />" .
-                textfield(-name=>'Filter', -default=>'') .
-                end_form;
-        }
+#        &BoardFind($did);
+#        my @extra;
+#        if ( defined($BoardsById{$did}{'Filters'}) ) {
+#            $extra[0] = ' (' . scalar(keys(%DBTMPL)) . ')';
+#            $extra[1] =
+#                start_form(-method=>'GET') .
+#                submit(-name=>'Mode', -value=>'view') .
+#                '<input type=hidden name=Dashboard value='. $did ." />\n";
+#            $extra[1] .= popup_menu(-name=>'Base',
+#                                    -values=>[sort keys(%DBTMPL)])
+#                if ($IndexMax <= 0 || scalar(keys(%DBTMPL)) <= $IndexMax);
+#            $extra[1] .= end_form;
+#        } else {
+#            $extra[0] = '';
+#            $extra[1] =
+#                start_form(-method=>'GET') .
+#                submit(-name=>'Mode', -value=>'view') .
+#                ' with filter: ' .
+#                '<input type=hidden name=Dashboard value='. $did ." />" .
+#                textfield(-name=>'Filter', -default=>'') .
+#                end_form;
+#        }
         print
             Tr({-class=>($silver++ % 2 == 0) ? 'header' : ''},
                td(a({-href=>MakeURL('Mode', 'view', 'Dashboard', $did)},
@@ -2403,9 +2403,9 @@ sub DashBoardIndex
                                     'Dashboard', $did)}, 'Clone')
                   .'] [Delete] '
                   : '', ' ',
-                  b($BoardsById{$did}{'Name'}),
-                  td({-align=>'right'}, $extra[0]),
-                  td($extra[1])));
+                  b($BoardsById{$did}{'Name'})));
+#                  td({-align=>'right'}, $extra[0]),
+#                  td($extra[1])));
     }
 }
 
