@@ -72,7 +72,7 @@ use vars qw ( $title $header $footer
               %Index $IndexMax $icon_new $icon_closed $icon_open $icon_text
               $icon_help $icon_bug $icon_link
               %colors
-              $CSS $CSS2 $bgColor );
+              $CSS $CSS2 $bgColor $rrdcached_sock );
 
 # Default title
 $title = 'Draw Round Robin Archives on the Web';
@@ -3511,7 +3511,7 @@ sub DRAW
                                      join(':', 'PRINT', 'xz',
                                           param("${ds}_RRA"), '%lf') );
 
-                        my ($graphret, $xs, $ys) = RRDs::graph(( $Config{'osname'} eq 'MSWin32' ) ? 'NUL:' : '/dev/null', "--start", $startts, "--end", $endts, @dsxz,"--daemon", "/var/run/rrdcached.sock");
+                        my ($graphret, $xs, $ys) = RRDs::graph(( $Config{'osname'} eq 'MSWin32' ) ? 'NUL:' : '/dev/null', "--start", $startts, "--end", $endts, @dsxz,"--daemon", $rrdcached_sock);
 #                        my ($graphret, $xs, $ys) = RRDs::graph(( $Config{'osname'} eq 'MSWin32' ) ? 'NUL:' : '/dev/null', "--start", $startts, "--end", $endts, @dsxz);
                         next if ( ${$graphret}[0] eq "nan" );
 
@@ -3816,7 +3816,7 @@ sub DRAW
     }
 
     #RRDs::graph($out, @Options, @DEF, @CDEF, @ELEM)
-    RRDs::graph($out, @Options, @DEF, @CDEF, @ELEM,"--daemon", "/var/run/rrdcached.sock")
+    RRDs::graph($out, @Options, @DEF, @CDEF, @ELEM,"--daemon", $rrdcached_sock)
         unless ( $mode > 0 && $out ne '-' && -r $out );
 
     if ( defined(RRDs::error) ) {
