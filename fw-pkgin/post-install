@@ -16,7 +16,25 @@ case "$1" in
     mkdir -p /var/www/html/mondemand/drraw/tmp
     mkdir -p /var/www/html/mondemand/drraw/saved
     mkdir -p /var/www/html/mondemand/data
+
+    chmod -R g+w /var/www/html/mondemand/
     chown -R apache:apache /var/www/html/mondemand
+
+    chkconfig --add httpd
+    chkconfig --add mondemand-rrdcached
+
+    # these below should probably be somewhere else
+    chkconfig --add erlnode
+    mkdir -p /mnt/mondemand-journaller/log
+    mkdir -p /mnt/mondemand-journaller/journals
+    mkdir -p /mnt/mondemand-journaller/journals/incoming
+    mkdir -p /mnt/mondemand-journaller/journals/loaded
+    mkdir -p /mnt/mondemand-journaller/journals/to_load
+    chown -R erlang:erlang /mnt/mondemand-journaller/
+
+    # as should these
+    chmod u+w /etc/couchdb/local.ini
+    chown couchdb:couchdb /etc/couchdb/local.ini
     ;;
   *)
     ;;

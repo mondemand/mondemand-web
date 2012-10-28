@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# mondemand-rrdcached - starts and stops rrdcached for mondemand
+#
+# chkconfig:   2345 85 15
+# description: Mondemand is a monitoring tool
+# pidfile: /var/run/rrdcached/rrdcached.pid
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+RRDCACHE_RUN_DIR=/var/run/rrdcached
+lockfile=/var/lock/subsys/rrdcached
+pidfile=$RRDCACHE_RUN_DIR/rrdcached.pid
+sock=$RRDCACHE_RUN_DIR/rrdcached.sock
+
+if test ! -d $RRDCACHE_RUN_DIR ; then
+  mkdir -p $RRDCACHE_RUN_DIR
+  chown apache:apache $RRDCACHE_RUN_DIR
+fi
+
+rrdcached="/usr/bin/rrdcached"
+prog=$(basename $rrdcached)
+
+start() {
+  [ -x $rrdcached ] || exit 5
+  echo -n $"Starting $prog: "
+  daemon --user apache $rrdcached -l $sock -w 3600 -f 7200 -p $pidfile
+  retval=$?
+  echo
+  [ $retval -eq 0 ] && touch $lockfile
+  return $retval
+}
+
+stop() {
+  echo -n $"Stopping $prog: "
+  killproc -p $pidfile $prog
+  retval=$? 
+  echo
+  [ $retval -eq 0 ] && rm -f $lockfile
+  return $retval
+}
+
+restart() {
+  stop
+  start
+}
+
+force_reload() {
+  restart
+}
+
+rh_status() {
+    status -p $pidfile $prog
+}
+
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    force-reload)
+        force_reload
+        ;;
+    status)
+        rh_status
+        ;;
+    condrestart|try-restart)
+        rh_status_q || exit 0
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|force-reload}"
+        exit 2
+esac
+

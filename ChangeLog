@@ -1,5 +1,6 @@
 Version 0.2.1 (molinaro)
-	* make rrdcached sock location a configuration variable
+	* add mondemand-rrdcached service script
+	* make mondemand-rrdcached sock location a configuration variable
 
 Version 0.2.0 (molinaro)
 	* removing lists of machines on main page to improve performance
