@@ -9,7 +9,7 @@
 # Source function library.
 . /etc/rc.d/init.d/functions
 
-RRDCACHE_RUN_DIR=/var/run/rrdcached
+RRDCACHE_RUN_DIR=/var/run/mondemand
 lockfile=/var/lock/subsys/rrdcached
 pidfile=$RRDCACHE_RUN_DIR/rrdcached.pid
 sock=$RRDCACHE_RUN_DIR/rrdcached.sock
@@ -25,7 +25,7 @@ prog=$(basename $rrdcached)
 start() {
   [ -x $rrdcached ] || exit 5
   echo -n $"Starting $prog: "
-  daemon --user apache $rrdcached -l $sock -w 3600 -f 7200 -p $pidfile
+  daemon --user apache $rrdcached -s apache -m 0777 -t 16 -l $sock -w 3600 -f 7200 -p $pidfile
   retval=$?
   echo
   [ $retval -eq 0 ] && touch $lockfile

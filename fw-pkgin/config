@@ -2,7 +2,7 @@
 # variable FW_PACKAGE_DEFAULT_MAINTAINER if non-empty at init time
 
 FW_PACKAGE_NAME="mondemand-web"
-FW_PACKAGE_VERSION="0.2.1"
+FW_PACKAGE_VERSION="0.3.0"
 FW_PACKAGE_MAINTAINER="Mondemand Devel <mondemand-devel@lists.sourceforge.net>"
 FW_PACKAGE_SHORT_DESCRIPTION="Web UI for Mondemand Listener Machine"
 FW_PACKAGE_DESCRIPTION=`cat README`

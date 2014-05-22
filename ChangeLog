@@ -1,3 +1,7 @@
+Version 0.3.0 (molinaro)
+	* changed location of rrdcached socket to be more consistent.
+	* added some arguments to help with permission issues
+
 Version 0.2.1 (molinaro)
 	* add mondemand-rrdcached service script
 	* make mondemand-rrdcached sock location a configuration variable
