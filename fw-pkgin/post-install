@@ -31,10 +31,6 @@ case "$1" in
     mkdir -p /mnt/mondemand-journaller/journals/loaded
     mkdir -p /mnt/mondemand-journaller/journals/to_load
     chown -R erlang:erlang /mnt/mondemand-journaller/
-
-    # as should these
-    chmod u+w /etc/couchdb/local.ini
-    chown couchdb:couchdb /etc/couchdb/local.ini
     ;;
   *)
     ;;
