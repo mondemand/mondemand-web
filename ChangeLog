@@ -1,3 +1,6 @@
+Version 0.3.2 (molinaro)
+	* normalize directories with mondemand-server rrd backend
+
 Version 0.3.1 (molinaro)
 	* remove setup for couchdb
 
