@@ -41,6 +41,7 @@ use Fcntl;
 use File::Basename;
 use File::Find;
 use POSIX qw(strftime);
+use Time::HiRes qw( gettimeofday tv_interval );
 
 # The following line is needed if "RRDs.pm" was not installed in a
 # directory mentioned in your perl's @INC.
@@ -526,7 +527,7 @@ END
 my ( @rrdfiles, @evtfiles ) = ( (), () );
 my ( %GraphsById, %TemplatesById, %BoardsById ) = ( (), (), () );
 my %DS = ();
-my ( %TMPL, %DBTMPL ) = ( (), () );
+my ( %DBTMPL ) = ( () );
 
 #
 # Here's where the fun really starts.
@@ -697,7 +698,6 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
             '<div id="AllTemplates-child">',
             '<blockquote class=padless>',
             start_table{-width=>'100%'};
-        &Cache_Load;
         &TemplateIndex('.');
         print
             end_table,
@@ -719,7 +719,6 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
             '<div id="AllDashboards-child">',
             '<blockquote class=padless>',
             start_table{-width=>'100%'};
-        &Cache_Load;
         &DashBoardIndex('.');
         print
             end_table,
@@ -784,25 +783,30 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
                   . ') does not appear in the index.');
         } elsif ( defined(param('Template')) && !defined(param('Base')) ) {
             # Template, but no base specified, display choices on a single page
-            &Cache_Load;
-            &TMPLFind($TemplatesById{param('Template')}{'Filter'},
-                      $TemplatesById{param('Template')}{'Display'});
+            my $template = param('Template');
+
+            my $Tmpl =
+              TMPLFindByTemplate (
+                $template,
+                $TemplatesById{$template}{'Filter'},
+                $TemplatesById{$template}{'Display'});
             print
                 header,
-                start_html({-style=>{-code=>$CSS}, -title=>'drraw - '
-                                . $TemplatesById{param('Template')}{'Name'}}),
+                start_html({-style=>{-code=>$CSS},
+                            -title=>'drraw - '.$TemplatesById{$template}{'Name'}}
+                          ),
                 $header,
-                h1($TemplatesById{param('Template')}{'Name'}),
+                h1($TemplatesById{$template}{'Name'}),
                 start_form({-align=>'center', -method=>'GET'}),
-                '<input type=hidden name=Template value=' . param('Template') . " />\n",
+                '<input type=hidden name=Template value=' . $template . " />\n",
                 p({-align=>'center'},
                   scrolling_list(-name=>'Base',
                                  -multiple=>'true',
-                                 -values=>[sort { $TMPL{$a} cmp $TMPL{$b} }
-                                           keys(%TMPL)],
-                                 -labels=>\%TMPL,
-                                 -size=>(scalar(keys(%TMPL)) < 25) ?
-                                 scalar(keys(%TMPL)) : 25),
+                                 -values=>[sort { $Tmpl->{$a} cmp $Tmpl->{$b} }
+                                           keys(%{$Tmpl})],
+                                 -labels=>$Tmpl,
+                                 -size=>(scalar(keys(%{$Tmpl})) < 25) ?
+                                 scalar(keys(%{$Tmpl})) : 25),
                   submit(-name=>'Mode', -value=>'view', -valign=>'center')),
                 end_form;
         } elsif ( defined(param('Dashboard'))
@@ -817,7 +821,6 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
         } elsif ( defined(param('Dashboard')) ) {
             # Dashboard template, but no base specified, display choices
             # on a single page
-            &Cache_Load;
             &BoardFind(param('Dashboard'));
             if ( scalar(keys(%DBTMPL)) > 0 && !defined(param('Base')) ) {
                 print
@@ -1035,32 +1038,41 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
                             $titem =~ s/^t//;
                             my @list = ();
                             if ( param("${item}_type") eq 'List' ) {
-                                &TMPLFind($TemplatesById{$titem}{'Filter'},
-                                          $TemplatesById{$titem}{'Display'});
+                                my $Tmpl =
+                                  TMPLFindByTemplate (
+                                    $titem,
+                                    $TemplatesById{$titem}{'Filter'},
+                                    $TemplatesById{$titem}{'Display'});
                                 foreach ( sort param("${item}_list") ) {
                                     push @list, $_
                                         if ( $filter eq ''
-                                             || $TMPL{$_} =~ /$filter/ );
+                                             || $Tmpl->{$_} =~ /$filter/ );
                                 }
                             } elsif ( param("${item}_type") eq 'Regex' ) {
-                                &TMPLFind($TemplatesById{$titem}{'Filter'},
-                                          $TemplatesById{$titem}{'Display'});
+                                my $Tmpl =
+                                  TMPLFindByTemplate (
+                                    $titem,
+                                    $TemplatesById{$titem}{'Filter'},
+                                    $TemplatesById{$titem}{'Display'});
                                 my $rx = param("${item}_regex");
-                                foreach ( sort { $TMPL{$a} cmp $TMPL{$b} }
-                                          keys(%TMPL) ) {
+                                foreach ( sort { $Tmpl->{$a} cmp $Tmpl->{$b} }
+                                          keys(%{$Tmpl}) ) {
                                     push @list, $_
-                                        if ( $TMPL{$_} =~ /$rx/
+                                        if ( $Tmpl->{$_} =~ /$rx/
                                              && ( $filter eq ''
-                                                  || $TMPL{$_} =~ /$filter/ ));
+                                                  || $Tmpl->{$_} =~ /$filter/ ));
                                 }
                             } elsif ( param("${item}_type") eq 'All' ) {
-                                &TMPLFind($TemplatesById{$titem}{'Filter'},
-                                          $TemplatesById{$titem}{'Display'});
-                                foreach ( sort { $TMPL{$a} cmp $TMPL{$b} }
-                                          keys(%TMPL) ) {
+                                my $Tmpl =
+                                  TMPLFindByTemplate (
+                                    $titem,
+                                    $TemplatesById{$titem}{'Filter'},
+                                    $TemplatesById{$titem}{'Display'});
+                                foreach ( sort { $Tmpl->{$a} cmp $Tmpl->{$b} }
+                                          keys(%{$Tmpl}) ) {
                                     push @list, $_
                                         if ( $filter eq ''
-                                             || $TMPL{$_} =~ /$filter/ );
+                                             || $Tmpl->{$_} =~ /$filter/ );
                                }
                             } elsif ( param("${item}_type") eq 'Base' ) {
                                 @list = ( $DBTMPL{$base}{$item} )
@@ -1113,51 +1125,54 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
                         $item =~ s/_Seq//;
                         next if ( defined(param("${item}_DELETE")) );
                         my @list = ();
+
                         if ( param("${item}_dname") =~ /^t/ ) {
                             $titem = param("${item}_dname");
                             $titem =~ s/^t//;
-                            &TMPLFind($TemplatesById{$titem}{'Filter'},
-                                      $TemplatesById{$titem}{'Display'});
+                            my $Tmpl =
+                              TMPLFindByTemplate (
+                                $titem,
+                                $TemplatesById{$titem}{'Filter'},
+                                $TemplatesById{$titem}{'Display'});
                             if ( param("${item}_type") eq 'List' ) {
                                 foreach ( param("${item}_list") ) {
                                     push @list, $_
                                         if ( $filter eq ''
-                                             || $TMPL{$_} =~ /$filter/ );
+                                             || $Tmpl->{$_} =~ /$filter/ );
                                 }
                             } elsif ( param("${item}_type") eq 'Regex' ) {
                                 my $rx = param("${item}_regex");
-                                foreach ( keys(%TMPL) ) {
+                                foreach ( keys(%{$Tmpl}) ) {
                                     push @list, $_
-                                        if ( $TMPL{$_} =~ /$rx/
+                                        if ( $Tmpl->{$_} =~ /$rx/
                                              && ( $filter eq ''
-                                                  || $TMPL{$_} =~ /$filter/ ));
+                                                  || $Tmpl->{$_} =~ /$filter/ ));
                                 }
                             } elsif ( param("${item}_type") eq 'All' ) {
-                                foreach ( keys(%TMPL) ) {
+                                foreach ( keys(%{$Tmpl}) ) {
                                     push @list, $_
                                         if ( $filter eq ''
-                                             || $TMPL{$_} =~ /$filter/ );
+                                             || $Tmpl->{$_} =~ /$filter/ );
                                 }
                             } else {
                                 &Error('Error in dashboard definition');
                             }
+
+                            push @cols, $titem;
+                            foreach ( @list ) {
+                                my $nex = param("${item}_row");
+                                my $row;
+                                if ( $nex eq '' ) {
+                                    $row = $Tmpl->{$_};
+                                } else {
+                                    # Why ' - ' ?  Is it okay?
+                                    $row = join(' - ', ($Tmpl->{$_} =~ /$nex/));
+                                }
+                                $Rows{$row}[scalar(@cols)-1] = $_;
+                            }
                         } else {
                             &Error('Error in dashboard definition');
                             next;
-                        }
-
-                        push @cols, $titem;
-
-                        foreach ( @list ) {
-                            my $nex = param("${item}_row");
-                            my $row;
-                            if ( $nex eq '' ) {
-                                $row = $TMPL{$_};
-                            } else {
-                                # Why ' - ' ?  Is it okay?
-                                $row = join(' - ', ($TMPL{$_} =~ /$nex/));
-                            }
-                            $Rows{$row}[scalar(@cols)-1] = $_;
                         }
                     }
 
@@ -1234,37 +1249,40 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
                     '</script>';
             } else {
                 # Template header
-                &Cache_Load;
-                &TMPLFind($TemplatesById{param('Template')}{'Filter'},
-                          $TemplatesById{param('Template')}{'Display'});
-                $id = 't' . param('Template');
+                my $template = param('Template');
+                my $Tmpl =
+                  TMPLFindByTemplate (
+                    $template,
+                    $TemplatesById{$template}{'Filter'},
+                    $TemplatesById{$template}{'Display'});
+                $id = 't' . $template;
                 my $title = '';
                 $title = ': '. a({-href=>&MakeURL('Mode', 'view',
-                                                  'Template',param('Template'),
+                                                  'Template',$template,
                                                   'Base', param('Base'))},
-                                 $TMPL{param('Base')})
+                                 $Tmpl->{param('Base')})
                     if ( scalar([param('Base')]) == 1 );
                 print
                     start_html({-style=>{-code=>$CSS}, -title=>'drraw - '
-                            . $TemplatesById{param('Template')}{'Name'},
+                            . $TemplatesById{$template}{'Name'},
                                     -head=>meta({-http_equiv=>'Refresh',
                                                  -content=>$vrefresh})}),
                     $header,
                     $ViewerJS,
                     start_table({-width=>'100%', -border=>0}),
                     Tr(td(h1(a({-href=>&MakeURL('Mode', 'view',
-                                                'Template',param('Template'))},
-                               $TemplatesById{param('Template')}{'Name'})
+                                                'Template',$template)},
+                               $TemplatesById{$template}{'Name'})
                              . $title)),
                        td({-align=>'right', -valign=>'top'},
                           a({-href=>&MakeURL()}, b('[Home]')),
                           ( $level > 0 ) ?
                           a({-href=>&MakeURL('USERSAID', 'Edit',
-                                             'Template', param('Template'))},
+                                             'Template', $template)},
                             '[Edit]') : '',
-                          ( -e $saved_dir .'/RCS/t'. param('Template') .',v' )
+                          ( -e $saved_dir .'/RCS/t'. $template .',v' )
                           ? a({-href=>MakeURL('Browse', 'Rcs',
-                                              'Id', 't'. param('Template'))},
+                                              'Id', 't'. $template)},
                               '[RCS Log]') : '',
                           br, small(b("". strftime("%Y-%m-%d %H:%M:%S",
                                                    localtime))),
@@ -1276,12 +1294,12 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
                     'setTimeout("ViewerCountdown(\'counter\')", 1000);',
                     '</script>',
                     start_form({-align=>'center', -method=>'GET'}),
-                    '<input type=hidden name=Template value=' . param('Template') . " />\n",
+                    '<input type=hidden name=Template value='.$template." />\n",
                     p({-align=>'center'},
                       popup_menu(-name=>'Base',
-                                 -values=>[sort { $TMPL{$a} cmp $TMPL{$b} }
-                                           keys(%TMPL)],
-                                 -labels=>\%TMPL),
+                                 -values=>[sort { $Tmpl->{$a} cmp $Tmpl->{$b} }
+                                           keys(%{$Tmpl})],
+                                 -labels=>$Tmpl),
                       submit(-name=>'Mode', -value=>'view')),
                     end_form;
             }
@@ -1476,13 +1494,13 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
         param(-name=>'gNoLegend', -value=>1) if ( defined($graph[6]) );
         param(-name=>'gFormat', -value=>$graph[7]) if ( defined($graph[7]) );
         &DSLoad;
-        &Cache_Load;
         &Sort_Colors_Init;
         if ( $graph[0] =~ /^t/ ) {
             # Define graph from the template definition and chosen base
             my %tDB;
             my ( $ds, @subs );
             foreach $ds ( sort keys(%DS) ) {
+#                warn "check $ds\n";
                 next if ( param("${ds}_File") eq '' );
                 if ( defined($tDB{param("${ds}_File")}) ) {
                     param("${ds}_File", $tDB{param("${ds}_File")});
@@ -1513,10 +1531,9 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
                 }
             }
 
-            &TMPLFind(param('tRegex'), param('tNiceRegex'));
-
             param(-name=>'gTitle', -value=>param('gTitle')
-                  .': '. $TMPL{param('Base')});
+                  .': '.
+                  MatchLabel(param('tRegex'),param('tNiceRegex'),param('Base')));
         }
         # Finally, produce the image
         &DRAW(( $graph[0] =~ /^\d/ ) ? 1 : 2);
@@ -1545,7 +1562,6 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
     }
 
     &Indexes_Load;
-    &Cache_Load;
 
     # Avoids having to check whether it's defined below..
     param('USERSAID', 'New') unless ( defined(param('USERSAID')) );
@@ -1872,8 +1888,10 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
             start_form(-method=>'POST', -name=>'Editor');
 
         if ( param('USERSAID') eq 'Refresh' ) {
+warn "cache refresh $ENV{QUERY_STRING}\n";
             &DBFind;
         } else {
+warn "cache load 6 $ENV{QUERY_STRING}\n";
             &Cache_Load;
         }
 
@@ -1963,8 +1981,10 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
                       submit(-name=>'USERSAID', -value=>'Clone Template') :""),
                       hr;
 
-                &TMPLFind(param('tRegex'), param('tNiceRegex'));
-                &TMPLConfig;
+                # TODO: get rid of the TMPLFind here, or make it faster
+                my $Tmpl =
+                  TMPLFind (param('tRegex'), param('tNiceRegex'));
+                TMPLConfig ($Tmpl);
                 print hr;
             } else {
                 # 'Graph' needs to be remembered
@@ -2038,10 +2058,10 @@ exit 0;
 sub Cache_Load
 {
     if ( scalar(@rrdfiles) > 0 ) {
-        &Error("Cache may only be loaded once..\n");
+#        &Error("Cache may only be loaded once..\n");
         return;
     }
-
+    my $start = [gettimeofday()];
     if ( -f "${tmp_dir}/rrdfiles" ) {
         if ( time - (stat("${tmp_dir}/rrdfiles"))[9] < $crefresh ) {
             open CACHE, "< ${tmp_dir}/rrdfiles"
@@ -2070,6 +2090,8 @@ sub Cache_Load
             close CACHE;
         }
     }
+    my $elapsed = tv_interval ($start);
+    warn "Took $elapsed seconds to load cache\n";
 
     &DBFind if ( scalar(@rrdfiles) == 0 );
 }
@@ -2321,8 +2343,6 @@ sub TemplateIndex
                           cmp $TemplatesById{$b}{'Name'} }
                    keys(%TemplatesById) ) {
         next unless ( $TemplatesById{$tid}{'Name'} =~ /$_[0]/ );
-#        &TMPLFind($TemplatesById{$tid}{'Filter'},
-#                  $TemplatesById{$tid}{'Display'});
         print
             Tr({-class=>($silver++ % 2 == 0) ? 'header' : ''},
                td(a({-href=>MakeURL('Mode', 'view', 'Template', $tid)},
@@ -2341,16 +2361,6 @@ sub TemplateIndex
                     'Clone') .'] [Delete] '
                   : '', ' ',
                   b($TemplatesById{$tid}{'Name'})));
-#               td({-align=>'right'}, ' (' . scalar(keys(%TMPL)) . ')'));
-#               td(start_form(-method=>'GET'),
-#                 submit(-name=>'Mode', -value=>'view'),
-#                 '<input type=hidden name=Template value='. $tid ." />\n",
-#                 ($IndexMax <= 0 || scalar(keys(%TMPL)) <= $IndexMax) ?
-#                 popup_menu(-name=>'Base',
-#                            -values=>[sort { $TMPL{$a} cmp $TMPL{$b} }
-#                                      keys(%TMPL)],
-#                            -labels=>\%TMPL) : '',
-#                 end_form));
     }
 }
 
@@ -2362,28 +2372,6 @@ sub DashBoardIndex
     foreach $did ( sort { $BoardsById{$a}{'Name'} cmp $BoardsById{$b}{'Name'} }
                    keys(%BoardsById) ) {
         next unless ( $BoardsById{$did}{'Name'} =~ /$_[0]/ );
-#        &BoardFind($did);
-#        my @extra;
-#        if ( defined($BoardsById{$did}{'Filters'}) ) {
-#            $extra[0] = ' (' . scalar(keys(%DBTMPL)) . ')';
-#            $extra[1] =
-#                start_form(-method=>'GET') .
-#                submit(-name=>'Mode', -value=>'view') .
-#                '<input type=hidden name=Dashboard value='. $did ." />\n";
-#            $extra[1] .= popup_menu(-name=>'Base',
-#                                    -values=>[sort keys(%DBTMPL)])
-#                if ($IndexMax <= 0 || scalar(keys(%DBTMPL)) <= $IndexMax);
-#            $extra[1] .= end_form;
-#        } else {
-#            $extra[0] = '';
-#            $extra[1] =
-#                start_form(-method=>'GET') .
-#                submit(-name=>'Mode', -value=>'view') .
-#                ' with filter: ' .
-#                '<input type=hidden name=Dashboard value='. $did ." />" .
-#                textfield(-name=>'Filter', -default=>'') .
-#                end_form;
-#        }
         print
             Tr({-class=>($silver++ % 2 == 0) ? 'header' : ''},
                td(a({-href=>MakeURL('Mode', 'view', 'Dashboard', $did)},
@@ -2404,8 +2392,6 @@ sub DashBoardIndex
                   .'] [Delete] '
                   : '', ' ',
                   b($BoardsById{$did}{'Name'})));
-#                  td({-align=>'right'}, $extra[0]),
-#                  td($extra[1])));
     }
 }
 
@@ -2457,6 +2443,7 @@ sub CustomIndex
                         "<div id=\"${uniqid}-child\">",
                         '<blockquote class=padless>',
                         start_table{-width=>'100%'};
+warn "cache load 7 $ENV{QUERY_STRING}\n";
                     &Cache_Load;
                     if ( ref($$ref{$key}) eq 'ARRAY' ) {
                         &GraphIndex($$ref{$key}[0])
@@ -2651,34 +2638,28 @@ sub DBFinder
 # Lists available RRD files for the user to pick
 sub DBChooser
 {
-    my ( %rrd, %evt );
-    my $file;
-    foreach $file ( sort(@rrdfiles) ) {
+    print
+        p({-align=>'center'},
+          b('Filename filter regexp: '),
+          textfield(-name=>'fn_FILTER',
+                    -default=>'Please add filter',
+                    -size=>40),
+          submit(-name=>'USERSAID', -value=>'Filter'));
+
+    # only fill out files if there is a filter in place
+    my $filter = param('fn_FILTER');
+    my @files = ();
+    my %rrd = ();
+    if (defined ($filter) and $filter ne "Please add filter") {
+      foreach my $file ( @rrdfiles ) {
         if ( $file =~ /^(.+)\/\/(.+)\.rrd$/ ) {
             $rrd{$file} = $datadirs{$1} . " " . $2;
         } else {
             die "Bad (rrd) filename in DBChooser: $file\n";
         }
+      }
+      @files = sort grep { $rrd{$_} =~ /$filter/ } keys (%rrd);
     }
-    foreach $file ( sort(@evtfiles) ) {
-        if ( $file =~ /^(.+)\/\/(.+)\.evt$/ ) {
-            $evt{$file} = $datadirs{$1} . " " . $2;
-        } else {
-            die "Bad (evt) filename in DBChooser: $file\n";
-        }
-    }
-
-    print
-        p({-align=>'center'},
-          b('Filename filter regexp: '),
-          textfield(-name=>'fn_FILTER', -default=>'', -size=>40),
-          submit(-name=>'USERSAID', -value=>'Filter'));
-
-    my @files;
-    @files = sort { &datafnsort($rrd{$a}, $rrd{$b}) } (keys(%rrd));
-    my $filter = param('fn_FILTER');
-    @files = grep { $rrd{$_} =~ /$filter/ } @files
-        if ( defined(param('fn_FILTER')) && param('fn_FILTER') ne '' );
     
     print
         p({-align=>'center'},
@@ -2705,9 +2686,18 @@ sub DBChooser
           br,
           submit(-name=>'USERSAID', -value=>'RRD Info for selected DB'));
 
-    @files = sort { &datafnsort($evt{$a}, $evt{$b}); } (keys(%evt));
-    @files = grep { $evt{$_} =~ /$filter/ } @files
-        if ( defined(param('fn_FILTER')) && param('fn_FILTER') ne '' );
+    my %evt = ();
+    my @evt_files = ();
+    if (defined ($filter) and $filter ne "Please add filter") {
+      foreach my $file ( @evtfiles ) {
+        if ( $file =~ /^(.+)\/\/(.+)\.evt$/ ) {
+            $evt{$file} = $datadirs{$1} . " " . $2;
+        } else {
+            die "Bad (evt) filename in DBChooser: $file\n";
+        }
+      }
+      @evt_files = sort grep { $evt{$_} =~ /$filter/ } keys (%evt);
+    }
 
     print
         p({-align=>'center'},
@@ -2718,7 +2708,7 @@ sub DBChooser
           scrolling_list(-name=>'evt_FILES',
                          -multiple=>'true',
                          -size=>10,
-                         -values=>\@files,
+                         -values=>\@evt_files,
                          -labels=>\%evt,
                          -default=>[])),
         p({-align=>'center'},
@@ -3948,161 +3938,236 @@ sub GraphHTML
     }
 }
 
+sub ExpandMatches
+{
+    croak 'ExpandMatches($string, @array)' if ( scalar(@_) != 2 );
+    my ( $str, $arr ) = ( @_ );
+    my $i = 0;
+    while ( $i < scalar(@$arr) ) {
+        $i += 1;
+        $str =~ s/\$$i(\D|$)/$$arr[$i-1]$1/g;
+    }
+    return $str;
+}
+
+sub MatchLabel
+{
+  my ($ex, $nex, $base) = @_;
+  my $label = $base;
+  $label =~ s/.*\/\///;
+  my @subs = ( $label =~ $ex );
+  return "" unless ( scalar(@subs) > 0 );
+  if ( defined($nex) && $nex ne '' ) {
+    $label = ExpandMatches ($nex, \@subs);
+  } else {
+    $label = join(' - ', ($label =~ /$ex/));
+  }
+  return $label;
+}
+
+sub TMPLFindByTemplate
+{
+  my ($template, $ex, $nex) = (@_);
+
+  # UnTaint
+  unless ($template =~ m/^([a-zA-Z0-9\._\-]+)$/) {
+    croak "bad arg\n";
+  }
+  $template = $1;
+
+  my $template_cache_file = $tmp_dir . '/' ."cached-template-labels-$template";
+  
+  my $Tmpl;
+
+  if ( ! -f $template_cache_file
+       or (time - (stat($template_cache_file))[9] > 3600) )
+  {
+    warn "didn't find or cache expired for $template_cache_file, so creating\n";
+
+    # load the full rrdfiles cache when we are attempting to update label mapping
+    &Cache_Load;
+
+    $Tmpl = TMPLFind ($ex, $nex);
+    open (TEMPLATE, "> $template_cache_file")
+      or die "Could not open $template_cache_file : $!\n";
+    foreach my $f (keys %{$Tmpl}) {
+      print TEMPLATE "$f\t".$Tmpl->{$f}."\n";
+    }
+    close TEMPLATE;
+    warn "wrote $template_cache_file\n";
+  }
+  else
+  {
+    warn "found cache $template_cache_file\n";
+    open (TEMPLATE, "< $template_cache_file")
+      or die "Could not open $template_cache_file : $!\n";
+    while (my $line = <TEMPLATE>) {
+      chomp $line;
+      my ($f, @rest) = split /\t/, $line;
+      my $rest = join ("\t", @rest);
+      $Tmpl->{$f} = $rest;
+    }
+    close TEMPLATE;
+  }
+  return $Tmpl;
+}
+
 sub TMPLFind
 {
     croak 'TMPLFind(filter, display)'
         unless ( scalar(@_) == 0 || scalar(@_) == 2 );
     my ( $ex, $nex ) = ( @_ );
 
+    my $start = [gettimeofday()];
     my %once;
-    %TMPL = ();
-    return unless ( defined($ex) && $ex ne '' );
-    foreach ( @rrdfiles ) {
-        my $label = $_;
-        my $base = $_;
-        $label =~ s/.*\/\///;
-        my @subs = ( $label =~ $ex );
-        next unless ( scalar(@subs) > 0 );
-        if ( defined($nex) && $nex ne '' ) {
-            $label = &ExpandMatches($nex, \@subs);
-        } else {
-            $label = join(' - ', ($label =~ /$ex/));
-        }
-        next if ( defined($once{$label}) );
-        $once{$label} = 1;
-        $TMPL{$base} = $label;
+    my $Tmpl = {};
+    return $Tmpl unless ( defined($ex) && $ex ne '' );
+    foreach my $base ( @rrdfiles ) {
+      my $label = MatchLabel ($ex, $nex, $base);
+      next if $label eq "";
+      next if ( defined($once{$label}) );
+      $once{$label} = 1;
+      $Tmpl->{$base} = $label;
     }
+    my $elapsed = tv_interval ($start);
+    warn "Took $elapsed seconds to TMPLFind ($ex, $nex)\n";
+    return $Tmpl;
 }
 
 sub TMPLConfig
 {
-    print p(table({-width=>'70%', -align=>'center'},
-                  Tr(td({-class=>'help'}, &help_templates))))
-        if ( param('USERSAID') eq 'Make Template' );
+  my ($Tmpl) = @_;
 
-    print
-        p({-align=>'center'}, submit(-name=>'USERSAID',
-                                     -value=>'Update')),
-        start_table({-border=>1,-align=>'center'},
-                    caption(em(b('Template Settings')),
-                            a({-href=>MakeURL('Browse', 'Help') .'#templates',
-                               -target=>'drrawhelp'}, small('Help'))),
-                    '<COLGROUP width="50%" align=right>',
-                    '<COLGROUP width="50%" align=center>'),
-        Tr(th({-align=>'center'}, 'Setting'),
-           th({-align=>'center'}, 'Values')),
-        Tr(td('Template Name'),
-           td(textfield(-name=>'tName', -size=>40, -class=>'normal',
-                        -default=>param('tName')))),
-        Tr(td('Base Regular Expression'),
-           td(textfield(-name=>'tRegex', -size=>40, -class=>'normal',
-                        -default=>param('tRegex')))),
-        Tr(td('Selection Regular Expression'),
-           td(textfield(-name=>'tNiceRegex', -size=>40, -class=>'normal',
-                        -default=>param('tNiceRegex'))));
+  print p(table({-width=>'70%', -align=>'center'},
+          Tr(td({-class=>'help'}, &help_templates))))
+    if ( param('USERSAID') eq 'Make Template' );
 
-    my ( %once, $ds, @subs );
-    if ( scalar(keys(%TMPL)) > 0 ) {
-        my ( @tmp, $best, @count );
-        $best = 0;
-        # It'd work better with two passes, but this should be enough
-        foreach $ds ( sort keys(%DS) ) {
-            next if ( param("${ds}_File") eq '' );
-            next if ( defined(param("${ds}_Formula")) );
-            my $ex = param('tRegex');
-            my $dbname = substr(param("${ds}_File"),
-                                2+index(param("${ds}_File"), '//'));
-            @tmp = ( $dbname =~ /$ex/ );
-            next if ( scalar(@tmp) == 0 );
-            if ( !defined(param("${ds}_Tmpl")) || param("${ds}_Tmpl") eq '' ) {
-                param(-name=>"${ds}_Tmpl",
-                      -value=>&ReduceMatches($dbname, \@tmp));
-            } else {
-                next unless ( $dbname eq &ExpandMatches(param("${ds}_Tmpl"),
-                                                        \@tmp) );
-            }
-            @count = ( param("${ds}_Tmpl") =~ /(\$\d+)/g );
-            if ( scalar(@count) > $best ) {
-                @subs = @tmp;
-                $best = scalar(@count);
-            }
-        }
-    }
+  print
+    p({-align=>'center'}, submit(-name=>'USERSAID',
+                                 -value=>'Update')),
+    start_table({-border=>1,-align=>'center'},
+                caption(em(b('Template Settings')),
+                        a({-href=>MakeURL('Browse', 'Help') .'#templates',
+                           -target=>'drrawhelp'}, small('Help'))),
+                '<COLGROUP width="50%" align=right>',
+                '<COLGROUP width="50%" align=center>'),
+    Tr(th({-align=>'center'}, 'Setting'),
+       th({-align=>'center'}, 'Values')),
+    Tr(td('Template Name'),
+       td(textfield(-name=>'tName', -size=>40, -class=>'normal',
+                    -default=>param('tName')))),
+    Tr(td('Base Regular Expression'),
+       td(textfield(-name=>'tRegex', -size=>40, -class=>'normal',
+                    -default=>param('tRegex')))),
+    Tr(td('Selection Regular Expression'),
+       td(textfield(-name=>'tNiceRegex', -size=>40, -class=>'normal',
+                    -default=>param('tNiceRegex'))));
 
+  my ( %once, $ds, @subs );
+  if ( scalar(keys(%{$Tmpl})) > 0 ) {
+    my ( @tmp, $best, @count );
+    $best = 0;
+    # It'd work better with two passes, but this should be enough
     foreach $ds ( sort keys(%DS) ) {
-        next if ( param("${ds}_File") eq '' );
-        next if ( $once{$DS{$ds}} );
-        $once{$DS{$ds}} = 1;
-        my $class = 'normal';
-        my $dbname;
-        if ( !defined(param("${ds}_Formula")) ) {
-            $dbname = substr(param("${ds}_File"),
-                             2+index(param("${ds}_File"),'//'));
-        } else {
-            $dbname = param("${ds}_File");
-        }
-        if ( scalar(@subs) > 0 ) {
-            if ( param("${ds}_Tmpl") eq '' ) {
-                param(-name=>"${ds}_Tmpl",
-                      -value=>&ReduceMatches($dbname, \@subs));
-            } else {
-                $class = 'smallred' if ( $dbname ne &ExpandMatches(param("${ds}_Tmpl"), \@subs) );
-            }
-        } else {
-            $class = 'red';
-        }
-        print
-            Tr(td($dbname),
-               td(textfield(-name=>"${ds}_Tmpl", -class=>$class, -size=>40,
-                            -default=>param("${ds}_Tmpl"))));
+      next if ( param("${ds}_File") eq '' );
+      next if ( defined(param("${ds}_Formula")) );
+      my $ex = param('tRegex');
+      my $dbname = substr(param("${ds}_File"),
+                          2+index(param("${ds}_File"), '//'));
+      @tmp = ( $dbname =~ /$ex/ );
+      next if ( scalar(@tmp) == 0 );
+      if ( !defined(param("${ds}_Tmpl")) || param("${ds}_Tmpl") eq '' ) {
+          param(-name=>"${ds}_Tmpl",
+                -value=>&ReduceMatches($dbname, \@tmp));
+      } else {
+          next unless ( $dbname eq &ExpandMatches(param("${ds}_Tmpl"),
+                                                  \@tmp) );
+      }
+      @count = ( param("${ds}_Tmpl") =~ /(\$\d+)/g );
+      if ( scalar(@count) > $best ) {
+          @subs = @tmp;
+          $best = scalar(@count);
+      }
     }
+  }
 
+  foreach $ds ( sort keys(%DS) ) {
+    next if ( param("${ds}_File") eq '' );
+    next if ( $once{$DS{$ds}} );
+    $once{$DS{$ds}} = 1;
+    my $class = 'normal';
+    my $dbname;
+    if ( !defined(param("${ds}_Formula")) ) {
+      $dbname = substr(param("${ds}_File"),
+                       2+index(param("${ds}_File"),'//'));
+    } else {
+      $dbname = param("${ds}_File");
+    }
+    if ( scalar(@subs) > 0 ) {
+      if ( param("${ds}_Tmpl") eq '' ) {
+        param(-name=>"${ds}_Tmpl",
+              -value=>&ReduceMatches($dbname, \@subs));
+      } else {
+        $class = 'smallred' if ( $dbname ne &ExpandMatches(param("${ds}_Tmpl"), \@subs) );
+      }
+    } else {
+      $class = 'red';
+    }
     print
-        end_table,
-        p({-align=>'center'}, submit(-name=>'USERSAID',
-                                     -value=>'Update'));
+      Tr(td($dbname),
+         td(textfield(-name=>"${ds}_Tmpl", -class=>$class, -size=>40,
+                      -default=>param("${ds}_Tmpl"))));
+  }
 
-    if ( defined(param('tRegex')) && param('tRegex') ne '' ) {
-        if ( scalar(keys(%TMPL)) == 0 ) {
-            &Error("Base Regular Expression produced no match!");
-        } else {
-            print
-                p({-align=>'center'},
-                  'There were ' . scalar(keys(%TMPL))
-                  . ' match for the Base Regular Expression: ',
-                  popup_menu(-name=>'TempPopup', -class=>'small',
-                             -values=>[sort(keys(%TMPL))]));
+  print
+    end_table,
+    p({-align=>'center'}, submit(-name=>'USERSAID',
+                                 -value=>'Update'));
 
-        }
+  if ( defined(param('tRegex')) && param('tRegex') ne '' ) {
+    if ( scalar(keys(%{$Tmpl})) == 0 ) {
+      &Error("Base Regular Expression produced no match!");
+    } else {
+      print
+        p({-align=>'center'},
+        'There were ' . scalar(keys(%{$Tmpl}))
+        . ' match for the Base Regular Expression: ',
+        popup_menu(-name=>'TempPopup', -class=>'small',
+                   -values=>[sort(keys(%{$Tmpl}))]));
+
     }
+  }
 }
 
 sub BoardFind
 {
-    croak 'BoardFind(board)'
-        unless ( scalar(@_) == 1 );
-    my ( $board ) = ( @_ );
+  croak 'BoardFind(board)' unless ( scalar(@_) == 1 );
+  my ( $board ) = ( @_ );
 
-    die "Undefined board: ${board}" unless ( defined($BoardsById{$board}) );
+  die "Undefined board: ${board}" unless ( defined($BoardsById{$board}) );
 
-    %DBTMPL = ();
-    return unless ( defined($BoardsById{$board}{'Filters'}) );
+  %DBTMPL = ();
+  return unless ( defined($BoardsById{$board}{'Filters'}) );
 
-    my $item;
-    foreach $item ( keys(%{$BoardsById{$board}{'Filters'}}) ) {
-        &TMPLFind($TemplatesById{$BoardsById{$board}{'Filters'}{$item}{'Template'}}{'Filter'}, $TemplatesById{$BoardsById{$board}{'Filters'}{$item}{'Template'}}{'Display'});
-        my $key;
-        foreach $key ( keys(%TMPL) ) {
-            my $filter = $BoardsById{$board}{'Filters'}{$item}{'Filter'};
-            next if ( defined($filter) && $filter ne ''
-                      && $TMPL{$key} !~ /$filter/ );
-            my $display = $TMPL{$key};
-            $filter = $BoardsById{$board}{'Filters'}{$item}{'Display'};
-            $display = join(' - ', ($display =~ /$filter/))
-                if ( defined($filter) && $filter ne '' );
-            $DBTMPL{$display}{$item} = $key;
-        }
+  foreach my $item ( keys(%{$BoardsById{$board}{'Filters'}}) ) {
+    my $template = $BoardsById{$board}{'Filters'}{$item}{'Template'};
+warn "template find 8 $ENV{QUERY_STRING}\n";
+    my $Tmpl =
+      TMPLFindByTemplate (
+        $template,
+        $TemplatesById{$template}{'Filter'},
+        $TemplatesById{$template}{'Display'});
+    foreach my $key ( keys(%{$Tmpl}) ) {
+      my $filter = $BoardsById{$board}{'Filters'}{$item}{'Filter'};
+      next if ( defined($filter) && $filter ne ''
+                  && $Tmpl->{$key} !~ /$filter/ );
+      my $display = $Tmpl->{$key};
+      $filter = $BoardsById{$board}{'Filters'}{$item}{'Display'};
+      $display = join(' - ', ($display =~ /$filter/))
+          if ( defined($filter) && $filter ne '' );
+      $DBTMPL{$display}{$item} = $key;
     }
+  }
 }
 
 sub BoardOptions
@@ -4225,13 +4290,17 @@ sub BoardConfig
         my $tmpl = param("${item}_dname");
         if ( defined($tmpl) && $tmpl =~ /^t/ ) {
             $tmpl =~ s/^t//;
-            &TMPLFind($TemplatesById{$tmpl}{'Filter'},
-                      $TemplatesById{$tmpl}{'Display'});
+warn "template find 9 $ENV{QUERY_STRING}\n";
+            my $Tmpl =
+              TMPLFindByTemplate (
+                $tmpl,
+                $TemplatesById{$tmpl}{'Filter'},
+                $TemplatesById{$tmpl}{'Display'});
             $tmpl = br . 'Selection: ' .
                 popup_menu(-name=>"${item}_tlist", -class=>'small',
-                           -values=>[sort { $TMPL{$a} cmp $TMPL{$b} }
-                                     keys(%TMPL)],
-                           -labels=>\%TMPL);
+                           -values=>[sort { $Tmpl->{$a} cmp $Tmpl->{$b} }
+                                     keys(%{$Tmpl})],
+                           -labels=>$Tmpl);
         } else {
             $tmpl = '';
         }
@@ -4270,14 +4339,18 @@ sub BoardConfig
              && param("${item}_type") eq 'List' ) {
             my $tmpl = param("${item}_dname");
             $tmpl =~ s/^t//;
-            &TMPLFind($TemplatesById{$tmpl}{'Filter'},
-                      $TemplatesById{$tmpl}{'Display'});
+
+            my $Tmpl =
+              TMPLFindByTemplate (
+                $tmpl,
+                $TemplatesById{$tmpl}{'Filter'},
+                $TemplatesById{$tmpl}{'Display'});
             print
                 td({-align=>'center'},
                    scrolling_list(-name=>"${item}_list", -class=>'small',
-                                  -values=>[sort { $TMPL{$a} cmp $TMPL{$b} }
-                                            keys(%TMPL)],
-                                  -labels=>\%TMPL,
+                                  -values=>[sort { $Tmpl->{$a} cmp $Tmpl->{$b} }
+                                            keys(%{$Tmpl})],
+                                  -labels=>$Tmpl,
                                   -size=>5,
                                   -multiple=>'true'));
         } else {
@@ -4518,20 +4591,6 @@ sub DSNew
     param("${name}_BR", 0);
     return $name;
 }
-
-sub ExpandMatches
-{
-    croak 'ExpandMatches($string, @array)' if ( scalar(@_) != 2 );
-    my ( $str, $arr ) = ( @_ );
-
-    my $i = 0;
-    while ( $i < scalar(@$arr) ) {
-        $i += 1;
-        $str =~ s/\$$i(\D|$)/$$arr[$i-1]$1/g;
-    }
-    return $str;
-}
-
 sub ReduceMatches
 {
     croak 'ReduceMatches($string, @array)' if ( scalar(@_) != 2 );

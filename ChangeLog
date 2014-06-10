@@ -1,3 +1,7 @@
+Version 0.4.0 (molinaro)
+	* significantly improve performance of many calls via caching and removing
+	of expensive file loads
+
 Version 0.3.2 (molinaro)
 	* normalize directories with mondemand-server rrd backend
 
