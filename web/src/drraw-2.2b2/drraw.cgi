@@ -1715,6 +1715,13 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
         $drrawhome,
         $footer,
         end_html;
+} elsif ( defined(param('BuildCaches')) ) {
+#  &BuildCaches();
+  print header,
+        start_html,
+        $header,
+        $footer,
+        end_html;
 } else {
     #
     # Editing pages
@@ -1887,13 +1894,8 @@ if ( scalar(@pnames) == 0 || defined(param('Browse')) ) {
             $EditorJS,
             start_form(-method=>'POST', -name=>'Editor');
 
-        if ( param('USERSAID') eq 'Refresh' ) {
-warn "cache refresh $ENV{QUERY_STRING}\n";
-            &DBFind;
-        } else {
 warn "cache load 6 $ENV{QUERY_STRING}\n";
-            &Cache_Load;
-        }
+        &Cache_Load;
 
         &DSLoad unless ( param('USERSAID') eq 'Save Graph'
                          || param('USERSAID') eq 'Clone Graph' );
@@ -2063,20 +2065,18 @@ sub Cache_Load
     }
     my $start = [gettimeofday()];
     if ( -f "${tmp_dir}/rrdfiles" ) {
-        if ( time - (stat("${tmp_dir}/rrdfiles"))[9] < $crefresh ) {
-            open CACHE, "< ${tmp_dir}/rrdfiles"
-                or die "Could not load saved cache (rrdfiles): $!\n";
-            while (<CACHE>) {
-                chomp;
-                push @rrdfiles, $_;
-            }
-            close CACHE;
-        }
+      open CACHE, "< ${tmp_dir}/rrdfiles"
+        or die "Could not load saved cache (rrdfiles): $!\n";
+      while (<CACHE>) {
+        chomp;
+        push @rrdfiles, $_;
+      }
+      close CACHE;
     }
 
     if ( scalar(@evtfiles) > 0 ) {
-        &Error("Cache may only be loaded once..\n");
-        return;
+      &Error("Cache may only be loaded once..\n");
+      return;
     }
 
     if ( -f "${tmp_dir}/evtfiles" ) {
@@ -2092,40 +2092,6 @@ sub Cache_Load
     }
     my $elapsed = tv_interval ($start);
     warn "Took $elapsed seconds to load cache\n";
-
-    &DBFind if ( scalar(@rrdfiles) == 0 );
-}
-
-sub Cache_Save
-{
-    if ( !open(CACHE, "> ${tmp_dir}/rrdfiles.$$") ) {
-        &Error("Could not save cache (evtfiles): $!\n");
-        return;
-    }
-
-    my $entry;
-    foreach $entry ( @rrdfiles ) {
-        print CACHE $entry . "\n";
-    }
-    close CACHE;
-    if ( !rename("${tmp_dir}/rrdfiles.$$", "${tmp_dir}/rrdfiles") ) {
-        unlink "${tmp_dir}/rrdfiles.$$";
-        &Error("Could not save cache (evtfiles): $!\n");
-    }
-
-    if ( !open(CACHE, "> ${tmp_dir}/evtfiles.$$") ) {
-        &Error("Could not save cache (evtfiles): $!\n");
-        return;
-    }
-
-    foreach $entry ( @evtfiles ) {
-        print CACHE $entry . "\n";
-    }
-    close CACHE;
-    if ( !rename("${tmp_dir}/evtfiles.$$", "${tmp_dir}/evtfiles") ) {
-        unlink "${tmp_dir}/evtfiles.$$";
-        &Error("Could not save cache (evtfiles): $!\n");
-    }
 }
 
 sub Indexes_Load
@@ -2599,40 +2565,6 @@ sub Definition_Save
         }
     }
     return $ok;
-}
-
-# Finding RRD files
-
-sub DBFind
-{
-    @rrdfiles = ();
-    @evtfiles = ();
-    alarm(0); # This may take a while, and that'd be okay..
-    find({wanted=>\&DBFinder, no_chdir=>1, follow=>1,
-          untaint=>1, # Untaint, lame...
-          untaint_pattern=>qr|^([-+@\w./:]+)$|}, keys(%datadirs));
-    alarm($maxtime);
-    Cache_Save;
-}
-
-sub DBFinder
-{
-    if ( -f $_ && ( /.\.rrd$/ || /.\.evt$/ ) ) {
-        my $start;
-        foreach $start ( keys(%datadirs) ) {
-            if ( $_ =~ /^${start}\/(.+)$/ ) {
-                my $end = $1;
-                if ( $_ =~ /\.rrd$/ ) {
-                    push @rrdfiles, $start . '//' . $end;
-                } else {
-                    push @evtfiles, $start . '//' . $end;
-                }
-                return;
-            }
-        }
-        warn "DBFinder called for $_ which does not match any of \%datadirs: ". join(", ", keys(%datadirs)) ."\n";
-        die "Something is wrong in DBFinder... (". $File::Find::dir .")\n";
-    }
 }
 
 # Lists available RRD files for the user to pick
