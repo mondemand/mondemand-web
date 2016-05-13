@@ -25,7 +25,7 @@ prog=$(basename $rrdcached)
 start() {
   [ -x $rrdcached ] || exit 5
   echo -n $"Starting $prog: "
-  daemon --user apache $rrdcached -s apache -m 0777 -t 16 -l $sock -w 3600 -f 7200 -p $pidfile
+  daemon --user apache $rrdcached -s apache -m 0777 -t 16 -l $sock -l 127.0.0.1:1337 -w 3600 -f 7200 -p $pidfile
   retval=$?
   echo
   [ $retval -eq 0 ] && touch $lockfile

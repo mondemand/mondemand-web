@@ -1,3 +1,6 @@
+Version 0.6.0 (molinaro)
+	* have mondemand-rrdcached also listen on a TCP port
+
 Version 0.5.0 (molinaro)
 	* provide a script which builds the caches to be run via cron
 
